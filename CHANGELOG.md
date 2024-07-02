@@ -27,11 +27,27 @@ Release Template
 # Releases
 Test/interim releases are not documented here.
 
+[0.11.1-alpha]
+### Add
+- Add plantuml support for `note on link`
+  - https://github.com/StateSmith/StateSmith/issues/343
+
 ---
 
-## WIP
-### Added
-- Added convenience helpers for `SmTransformer`.
+## [0.11.0-alpha]
+### Add
+- Add diagram based toml config for `RenderConfig` and `SmRunner.Settings`
+  - Useful for plantuml as well which previously never had diagram based render config support.
+  - https://github.com/StateSmith/StateSmith/issues/335
+- simulator - show implicit `do` edge trigger explicitly
+    - https://github.com/StateSmith/StateSmith/issues/316
+- Add default expansions for variables and functions.
+    - https://github.com/StateSmith/StateSmith/issues/284
+- Add convenience helpers for `SmTransformer`.
+
+### Fix
+- simulator - prevent user diagram settings that could mess up generated simulation.
+    - https://github.com/StateSmith/StateSmith/issues/337
 
 ---
 

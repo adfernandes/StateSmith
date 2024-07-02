@@ -10,10 +10,10 @@ namespace StateSmith.Cli.Run;
 
 public class RunHandler
 {
-    public SsCsxFileFinder Finder;
+    public SsCsxDiagramFileFinder Finder;
 
     private CsxOutputParser _parser;
-    private ManifestPersistance _manifestPersistance;
+    private IManifestPersistance _manifestPersistance;
     private string manifestDirectory;
 
     RunInfo _runInfo;
@@ -21,10 +21,14 @@ public class RunHandler
     internal RunInfoDataBase _runInfoDataBase;
     bool _forceRebuild = false;
     IAnsiConsole _console;
+    private readonly DiagramOptions _diagramOptions;
+    RunConsole _runConsole;
+    bool verbose;
 
-    public RunHandler(IAnsiConsole console, string dirOrManifestPath)
+    public RunHandler(IAnsiConsole console, string dirOrManifestPath, DiagramOptions diagramOptions, bool verbose, IManifestPersistance? manifestPersistance = null)
     {
         _console = console;
+        this._diagramOptions = diagramOptions;
         dirOrManifestPath = Path.GetFullPath(dirOrManifestPath);
 
         FileAttributes attr = File.GetAttributes(dirOrManifestPath);
@@ -36,9 +40,11 @@ public class RunHandler
         _parser = new CsxOutputParser();
         _runInfo = new RunInfo(dirOrManifestPath);
         _runInfoDataBase = new RunInfoDataBase(dirOrManifestPath, console);
-        _incrementalRunChecker = new IncrementalRunChecker(_console, manifestDirectory);
-        Finder = new SsCsxFileFinder();
-        _manifestPersistance = new ManifestPersistance(manifestDirectory);
+        _incrementalRunChecker = new IncrementalRunChecker(_console, manifestDirectory, verbose);
+        Finder = new SsCsxDiagramFileFinder();
+        _manifestPersistance = manifestPersistance ?? new ManifestPersistance(manifestDirectory);
+        this.verbose = verbose;
+        _runConsole = new RunConsole(_console);
     }
 
     public void SetForceRebuild(bool forceRebuild)
@@ -49,7 +55,12 @@ public class RunHandler
     public void CreateBlankManifest()
     {
         var manifest = new ManifestData();
-        manifest.RunManifest.IncludePathGlobs.Add("**/*.csx");
+
+        foreach (var ext in StandardFiles.GetStandardFileExtensions())
+        {
+            manifest.RunManifest.IncludePathGlobs.Add($"**/*{ext}");
+        }
+
         WriteManifest(manifest);
     }
 
@@ -79,11 +90,58 @@ public class RunHandler
 
     private void RunInner()
     {
-        //_console.MarkupLine($"[cyan]This feature Still a work in progress...[/]");
+        string searchDirectory = manifestDirectory;
 
         ReadPastRunInfoDatabase();
-        var csxScripts = Finder.Scan(searchDirectory: manifestDirectory);
-        RunScriptsIfNeeded(csxScripts);
+        var scanResults = Finder.Scan(searchDirectory: searchDirectory);
+        RunScriptsIfNeeded(scanResults.targetCsxFiles);
+
+        var diagramRunner = new DiagramRunner(_runConsole, _diagramOptions, _runInfo, _forceRebuild, searchDirectory: searchDirectory, verbose: verbose);
+        diagramRunner.Run(scanResults.targetDiagramFiles);
+
+        PrintScanInfo(scanResults);
+    }
+
+    private void PrintScanInfo(SsCsxDiagramFileFinder.ScanResults scanResults)
+    {
+        bool spacerPrinted = false;
+
+        void PrintSpacerIfNeeded()
+        {
+            if (!spacerPrinted)
+            {
+                _runConsole.MarkupLine("");
+                spacerPrinted = true;
+            }
+        }
+
+        // print ignored files
+        if (verbose && scanResults.ignoredFiles.Count > 0)
+        {
+            PrintSpacerIfNeeded();
+            _runConsole.QuietMarkupLine("Ignored files: " + string.Join(", ", scanResults.ignoredFiles));
+        }
+
+        // print non-matching files
+        if (verbose && scanResults.nonMatchingFiles.Count > 0)
+        {
+            PrintSpacerIfNeeded();
+            _runConsole.QuietMarkupLine("Non-matching files: " + string.Join(", ", scanResults.nonMatchingFiles));
+        }
+
+        // print broken svg files always (ignore verbose)
+        if (scanResults.brokenDrawioSvgFiles.Count > 0)
+        {
+            _runConsole.WriteLine(""); // always add a spacer
+            _runConsole.WarnMarkupLine("!!! Broken drawio.svg files found !!!");
+
+            foreach (var item in scanResults.brokenDrawioSvgFiles)
+            {
+                _runConsole.MarkupLine($"  - {item}");
+            }
+
+            _runConsole.MarkupLine("  - see [blue][u]https://github.com/StateSmith/StateSmith/issues/341[/][/]");
+        }
     }
 
     public void RunScriptsIfNeeded(List<string> csxScripts)
@@ -98,7 +156,7 @@ public class RunHandler
 
         foreach (var csxShortPath in csxScripts)
         {
-            anyScriptsRan |= RunScriptIfNeeded(manifestDirectory, csxShortPath);
+            anyScriptsRan |= RunScriptIfNeeded(searchDirectory: manifestDirectory, csxShortPath);
             //_console.WriteLine(); // already lots of newlines in RunScriptIfNeeded
         }
 
@@ -119,7 +177,7 @@ public class RunHandler
         string csxLongerPath = $"{searchDirectory}/{csxShortPath}";
         string csxAbsolutePath = Path.GetFullPath(csxLongerPath);
 
-        AddMildHeader($"Checking script and diagram dependencies for: `{csxShortPath}`");
+        _runConsole.AddMildHeader($"Checking script and diagram dependencies for: `{csxShortPath}`");
         IncrementalRunChecker.Result runCheck = _incrementalRunChecker.TestFilePath(csxAbsolutePath);
         if (runCheck != IncrementalRunChecker.Result.OkToSkip)
         {
@@ -130,11 +188,11 @@ public class RunHandler
         {
             if (_forceRebuild)
             {
-                ConsoleMarkupLine("Would normally skip (file dates look good), but [yellow]rebuild[/] option set.");
+                _runConsole.MarkupLine("Would normally skip (file dates look good), but [yellow]rebuild[/] option set.");
             }
             else
             {
-                QuietMarkupLine($"Script and its diagram dependencies haven't changed. Skipping.");
+                _runConsole.QuietMarkupLine($"Script and its diagram dependencies haven't changed. Skipping.");
                 return scriptRan; //!!!!!!!!!!! NOTE the return here.
             }
         }
@@ -171,27 +229,6 @@ public class RunHandler
         {
             _runInfo = readRunInfo.DeepCopy();
         }
-    }
-
-    private void AddMildHeader(string header)
-    {
-        _console.MarkupLine("");
-
-        var rule = new Rule($"[blue]{header}[/]")
-        {
-            Justification = Justify.Left
-        };
-        _console.Write(rule);
-    }
-
-    private void QuietMarkupLine(string message)
-    {
-        ConsoleMarkupLine($"[grey]{message}[/]");
-    }
-
-    private void ConsoleMarkupLine(string message)
-    {
-        _console.MarkupLine(message);
     }
 
     public void AddFromManifest(ManifestData manifest)

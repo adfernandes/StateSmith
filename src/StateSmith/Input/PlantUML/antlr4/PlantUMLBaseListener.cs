@@ -252,6 +252,18 @@ public partial class PlantUMLBaseListener : IPlantUMLListener {
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitNote_short([NotNull] PlantUMLParser.Note_shortContext context) { }
 	/// <summary>
+	/// Enter a parse tree produced by <see cref="PlantUMLParser.kept_block_comment"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterKept_block_comment([NotNull] PlantUMLParser.Kept_block_commentContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="PlantUMLParser.kept_block_comment"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitKept_block_comment([NotNull] PlantUMLParser.Kept_block_commentContext context) { }
+	/// <summary>
 	/// Enter a parse tree produced by <see cref="PlantUMLParser.note_multiline_contents_line"/>.
 	/// <para>The default implementation does nothing.</para>
 	/// </summary>
@@ -275,6 +287,18 @@ public partial class PlantUMLBaseListener : IPlantUMLListener {
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	public virtual void ExitNote_multiline([NotNull] PlantUMLParser.Note_multilineContext context) { }
+	/// <summary>
+	/// Enter a parse tree produced by <see cref="PlantUMLParser.note_on_link"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void EnterNote_on_link([NotNull] PlantUMLParser.Note_on_linkContext context) { }
+	/// <summary>
+	/// Exit a parse tree produced by <see cref="PlantUMLParser.note_on_link"/>.
+	/// <para>The default implementation does nothing.</para>
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	public virtual void ExitNote_on_link([NotNull] PlantUMLParser.Note_on_linkContext context) { }
 	/// <summary>
 	/// Enter a parse tree produced by <see cref="PlantUMLParser.note_floating"/>.
 	/// <para>The default implementation does nothing.</para>

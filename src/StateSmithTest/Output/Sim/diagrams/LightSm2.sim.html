@@ -12,10 +12,17 @@
   -->
 <html>
   <head>
+    <link rel='icon' type='image/png' href='https://statesmith.github.io/favicon.png'>
+    <link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined'>
     <style>
       body {
         display: flex;
         flex-direction: row;
+        margin: 0px;
+      }
+
+      /* Fix for mermaid content requiring scroll bars https://github.com/StateSmith/StateSmith/issues/288 */
+      pre.mermaid {
         margin: 0px;
       }
 
@@ -28,6 +35,13 @@
       .pane {
         padding: 1em;
         min-width: 200px;
+      }
+
+      .titlebar-icon {
+        font-family: 'Material Symbols Outlined', sans-serif;
+        font-size: 16px;
+        color: #777;
+        border-radius: 5px;
       }
 
       .gutter {
@@ -48,6 +62,7 @@
 
       .sidebar {
         width: 300px;
+        padding-top: 0px;
         position: relative;
         background-color: #f0f0f0;
         border-left: 1px solid #ccc;
@@ -65,12 +80,38 @@
         border-bottom: 1px solid #ccc;
         font-weight: bold;
         padding: 5px;
+        display: flex;
       }
 
       .console {
         border-collapse: collapse;
         margin-top: 10px;
         width: 100%;
+      }
+
+      table.console td.timestamp {
+        display: none;
+      }
+
+      table.console.timestamps td.timestamp {
+        display: table-cell;
+      }
+
+      table.console td {
+          color: rgba(0, 0, 0, 0.7);
+      }
+
+      table.console td .dispatched {
+          font-weight: bold;
+          color: rgba(0, 0, 0, 1);
+      }
+
+      table.console tr:has(+tr td .dispatched) {
+          border-bottom: 0px;
+      }
+
+      table.console tr:has(+tr td .dispatched) td {
+          padding-bottom: 25px;
       }
 
       .console th {
@@ -82,13 +123,14 @@
       }
 
       .console tbody {
-        display: flex;
-        flex-direction: column-reverse;
         font-family: monospace;
       }
 
-      .console td {
+      .console tr {
         border-bottom: 1px solid #ccc;
+      }
+
+      .console td {
         padding: 5px;
       }
   
@@ -96,22 +138,75 @@
         font-size: small;
       }
 
-      .console td.emphasis {
-        font-weight: bold;
-      }
-
       .history {
-        margin-top: 30px;
-        overflow: scroll;    
+        margin-top: 30px;       
+        display: flex;
+        overflow: auto;    
+        flex-direction: column-reverse;
       }
 
       .console tr:last-child td {
         border-bottom: none;
       }
 
+      .dispatched {
+        font-weight: bold;
+      }
+
+      .dispatched > .trigger {
+        border: 1px solid #000;
+        border-radius: 4px;
+        padding: 2px 10px 2px 10px;
+      }
+
       button {
         margin: 5px;
       }
+
+      .dropbtn {
+        border: none;
+        cursor: pointer;
+      }
+
+      .dropbtn:hover, .dropbtn:focus {
+        background-color: #f1f1f1;
+      }
+
+      .dropdown {
+        position: relative;
+        display: inline-block;
+        margin-left: auto;
+      }
+
+      .dropdown-content {
+        display: none;
+        position: absolute;
+        right: 0;
+        background-color: #f1f1f1;
+        min-width: 160px;
+        overflow: auto;
+        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+        z-index: 1;
+      }
+
+      .dropdown-content .dropdown-item {
+        padding: 12px 16px;
+        font-weight: normal;
+      }
+
+      .show {display: block;}
+
+      .transition.active {
+        stroke: #fff5ad !important;
+        stroke-width: 5px !important;
+        filter: drop-shadow( 3px 3px 2px rgba(0, 0, 0, .7));
+      }
+
+      .statediagram-state.active > * {
+        fill: #fff5ad !important;
+        stroke-width: 2px !important;
+      }
+
     </style>
   </head>
 
@@ -120,56 +215,105 @@
     <div class="pane main">
         <pre class="mermaid">
 stateDiagram
-classDef active fill:yellow,stroke-width:2px;
+
 state ORDER_MENU {
+
         state BEVERAGE {
+
                 state "$initial_state" as BEVERAGE.(InitialState)
+
                 BEVERAGE__FIRST
+
                 BEVERAGE__FIRST : BEVERAGE__FIRST
+
                 COFFEE
+
                 COFFEE : COFFEE
+
                 COFFEE : enter / #123; do_x()#59; #125;
+
                 TEA
+
                 TEA : TEA
+
                 state "$HC" as BEVERAGE.(HistoryContinue)
+
         }
+
         state FOOD {
+
                 state "$initial_state" as FOOD.(InitialState)
+
                 FOOD__FIRST
+
                 FOOD__FIRST : FOOD__FIRST
+
                 POTATO
+
                 POTATO : POTATO
+
                 SUSHI
+
                 SUSHI : SUSHI
+
         }
+
         state "$entry_pt.to_history" as ORDER_MENU.(EntryPoint)(to_history)
+
         state "$exit_pt.1" as ORDER_MENU.(ExitPoint)(1)
+
         state "$H" as ORDER_MENU.(History)
+
         state ORDER_MENU.(ChoicePoint)(bev_choice) <<choice>>
+
 }
+
 WAITING
+
 WAITING : WAITING
+
 state "$initial_state" as ROOT.(InitialState)
+
 ORDER_MENU --> WAITING : EV3
+
 BEVERAGE --> FOOD : EV2
+
 BEVERAGE.(InitialState) --> BEVERAGE__FIRST
+
 BEVERAGE__FIRST --> COFFEE : EV1
+
 COFFEE --> TEA : EV1
+
 TEA --> COFFEE : EV1
+
 TEA --> BEVERAGE.(InitialState) : EV2
+
 FOOD --> ORDER_MENU.(ChoicePoint)(bev_choice) : EV2
+
 FOOD --> ORDER_MENU.(ExitPoint)(1) : ESCAPE
+
 FOOD.(InitialState) --> FOOD__FIRST
+
 FOOD__FIRST --> POTATO : EV1
+
 POTATO --> SUSHI : EV1
+
 SUSHI --> FOOD__FIRST : EV1
+
 ORDER_MENU.(EntryPoint)(to_history) --> ORDER_MENU.(History)
+
 ORDER_MENU.(ExitPoint)(1) --> WAITING
+
 ORDER_MENU.(History) --> BEVERAGE
+
 ORDER_MENU.(ChoicePoint)(bev_choice) --> TEA : [a > b]
+
 ORDER_MENU.(ChoicePoint)(bev_choice) --> BEVERAGE : else
+
 WAITING --> ORDER_MENU.(EntryPoint)(to_history) : EV3
+
 ROOT.(InitialState) --> WAITING
+
 
 
         </pre>
@@ -177,15 +321,24 @@ ROOT.(InitialState) --> WAITING
 
     <div class="pane sidebar">
         <div id="buttons">
-            <div class="titlebar">Events</div>
+            <div class="titlebar">Events            
+              <div class='dropdown'>
+                <span id='dropbtn' class='titlebar-icon dropbtn'>settings</span>
+                <div id='myDropdown' class='dropdown-content'>
+                  <div class='dropdown-item'>
+                    <input type='checkbox' id='timestamps' name='timestamps' value='Timestamps'>
+                    <label for='timestamps'>Timestamps</label>
+                  </div>
+                </div>
+              </div>            
+          </div>
         </div>
 
         <div class="history">
-            <div class="titlebar">Log</div>
-            <table class="console">
+          <table class="console">
             <tbody>
             </tbody>
-            </table>
+          </table>
         </div>
 
         <div class="gutter"></div>
@@ -258,8 +411,6 @@ evaluateGuard = null;
     // Variables. Can be used for inputs, outputs, user variables...
     vars = {
         ORDER_MENU_history: undefined,
-        // your variable declartions here like: 
-        // uint8_t count;
     };
     
     // Starts the state machine. Must be called before dispatching events. Not thread safe.
@@ -277,12 +428,12 @@ evaluateGuard = null;
             // ROOT.<InitialState> is a pseudo state and cannot have an `enter` trigger.
             
             // ROOT.<InitialState> behavior
-            // uml: / { this.tracer.edgeTransition("edge19"); } TransitionTo(WAITING)
+            // uml: / { this.tracer?.edgeTransition("edge19"); } TransitionTo(WAITING)
             {
                 // Step 1: Exit states until we reach `ROOT` state (Least Common Ancestor for transition). Already at LCA, no exiting required.
                 
-                // Step 2: Transition action: `this.tracer.edgeTransition("edge19");`.
-                this.tracer.edgeTransition("edge19");
+                // Step 2: Transition action: `this.tracer?.edgeTransition("edge19");`.
+                this.tracer?.edgeTransition("edge19");
                 
                 // Step 3: Enter/move towards transition target `WAITING`.
                 this.#WAITING_enter();
@@ -345,20 +496,20 @@ evaluateGuard = null;
         this.#currentEventHandlers[LightSm2.EventId.EV3] = this.#ORDER_MENU_ev3;
         
         // ORDER_MENU behavior
-        // uml: enter / { this.tracer?.enterState(LightSm2.StateId.ORDER_MENU); }
+        // uml: enter / { this.tracer?.enterState('ORDER_MENU'); }
         {
-            // Step 1: execute action `this.tracer?.enterState(LightSm2.StateId.ORDER_MENU);`
-            this.tracer?.enterState(LightSm2.StateId.ORDER_MENU);
+            // Step 1: execute action `this.tracer?.enterState('ORDER_MENU');`
+            this.tracer?.enterState('ORDER_MENU');
         } // end of behavior for ORDER_MENU
     }
     
     #ORDER_MENU_exit()
     {
         // ORDER_MENU behavior
-        // uml: exit / { this.tracer?.exitState(LightSm2.StateId.ORDER_MENU); }
+        // uml: exit / { this.tracer?.exitState('ORDER_MENU'); }
         {
-            // Step 1: execute action `this.tracer?.exitState(LightSm2.StateId.ORDER_MENU);`
-            this.tracer?.exitState(LightSm2.StateId.ORDER_MENU);
+            // Step 1: execute action `this.tracer?.exitState('ORDER_MENU');`
+            this.tracer?.exitState('ORDER_MENU');
         } // end of behavior for ORDER_MENU
         
         // adjust function pointers for this state's exit
@@ -371,13 +522,13 @@ evaluateGuard = null;
         // No ancestor state handles `ev3` event.
         
         // ORDER_MENU behavior
-        // uml: EV3 / { this.tracer.edgeTransition("edge0"); } TransitionTo(WAITING)
+        // uml: EV3 / { this.tracer?.edgeTransition("edge0"); } TransitionTo(WAITING)
         {
             // Step 1: Exit states until we reach `ROOT` state (Least Common Ancestor for transition).
             this.#exitUpToStateHandler(this.#ROOT_exit);
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge0");`.
-            this.tracer.edgeTransition("edge0");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge0");`.
+            this.tracer?.edgeTransition("edge0");
             
             // Step 3: Enter/move towards transition target `WAITING`.
             this.#WAITING_enter();
@@ -401,27 +552,27 @@ evaluateGuard = null;
         this.#currentEventHandlers[LightSm2.EventId.EV2] = this.#BEVERAGE_ev2;
         
         // BEVERAGE behavior
-        // uml: enter / { this.tracer?.enterState(LightSm2.StateId.BEVERAGE); }
+        // uml: enter / { this.tracer?.enterState('BEVERAGE'); }
         {
-            // Step 1: execute action `this.tracer?.enterState(LightSm2.StateId.BEVERAGE);`
-            this.tracer?.enterState(LightSm2.StateId.BEVERAGE);
+            // Step 1: execute action `this.tracer?.enterState('BEVERAGE');`
+            this.tracer?.enterState('BEVERAGE');
         } // end of behavior for BEVERAGE
         
         // BEVERAGE behavior
-        // uml: enter / { $gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE;)this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE;)"); }
+        // uml: enter / { $gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE;) }
         {
-            // Step 1: execute action `$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE;)this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE;)");`
-            this.vars.ORDER_MENU_history = LightSm2.ORDER_MENU_HistoryId.BEVERAGE;this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE;)");
+            // Step 1: execute action `$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE;)`
+            this.vars.ORDER_MENU_history = LightSm2.ORDER_MENU_HistoryId.BEVERAGE;
         } // end of behavior for BEVERAGE
     }
     
     #BEVERAGE_exit()
     {
         // BEVERAGE behavior
-        // uml: exit / { this.tracer?.exitState(LightSm2.StateId.BEVERAGE); }
+        // uml: exit / { this.tracer?.exitState('BEVERAGE'); }
         {
-            // Step 1: execute action `this.tracer?.exitState(LightSm2.StateId.BEVERAGE);`
-            this.tracer?.exitState(LightSm2.StateId.BEVERAGE);
+            // Step 1: execute action `this.tracer?.exitState('BEVERAGE');`
+            this.tracer?.exitState('BEVERAGE');
         } // end of behavior for BEVERAGE
         
         // adjust function pointers for this state's exit
@@ -434,13 +585,13 @@ evaluateGuard = null;
         // No ancestor state handles `ev2` event.
         
         // BEVERAGE behavior
-        // uml: EV2 / { this.tracer.edgeTransition("edge1"); } TransitionTo(FOOD)
+        // uml: EV2 / { this.tracer?.edgeTransition("edge1"); } TransitionTo(FOOD)
         {
             // Step 1: Exit states until we reach `ORDER_MENU` state (Least Common Ancestor for transition).
             this.#exitUpToStateHandler(this.#ORDER_MENU_exit);
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge1");`.
-            this.tracer.edgeTransition("edge1");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge1");`.
+            this.tracer?.edgeTransition("edge1");
             
             // Step 3: Enter/move towards transition target `FOOD`.
             this.#FOOD_enter();
@@ -454,12 +605,12 @@ evaluateGuard = null;
     #BEVERAGE_InitialState_transition()
     {
         // BEVERAGE.<InitialState> behavior
-        // uml: / { this.tracer.edgeTransition("edge2"); } TransitionTo(BEVERAGE__FIRST)
+        // uml: / { this.tracer?.edgeTransition("edge2"); } TransitionTo(BEVERAGE__FIRST)
         {
             // Step 1: Exit states until we reach `BEVERAGE` state (Least Common Ancestor for transition). Already at LCA, no exiting required.
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge2");`.
-            this.tracer.edgeTransition("edge2");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge2");`.
+            this.tracer?.edgeTransition("edge2");
             
             // Step 3: Enter/move towards transition target `BEVERAGE__FIRST`.
             this.#BEVERAGE__FIRST_enter();
@@ -483,27 +634,27 @@ evaluateGuard = null;
         this.#currentEventHandlers[LightSm2.EventId.EV1] = this.#BEVERAGE__FIRST_ev1;
         
         // BEVERAGE__FIRST behavior
-        // uml: enter / { this.tracer?.enterState(LightSm2.StateId.BEVERAGE__FIRST); }
+        // uml: enter / { this.tracer?.enterState('BEVERAGE__FIRST'); }
         {
-            // Step 1: execute action `this.tracer?.enterState(LightSm2.StateId.BEVERAGE__FIRST);`
-            this.tracer?.enterState(LightSm2.StateId.BEVERAGE__FIRST);
+            // Step 1: execute action `this.tracer?.enterState('BEVERAGE__FIRST');`
+            this.tracer?.enterState('BEVERAGE__FIRST');
         } // end of behavior for BEVERAGE__FIRST
         
         // BEVERAGE__FIRST behavior
-        // uml: enter / { $gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE__FIRST;)this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE__FIRST;)"); }
+        // uml: enter / { $gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE__FIRST;) }
         {
-            // Step 1: execute action `$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE__FIRST;)this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE__FIRST;)");`
-            this.vars.ORDER_MENU_history = LightSm2.ORDER_MENU_HistoryId.BEVERAGE__FIRST;this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE__FIRST;)");
+            // Step 1: execute action `$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.BEVERAGE__FIRST;)`
+            this.vars.ORDER_MENU_history = LightSm2.ORDER_MENU_HistoryId.BEVERAGE__FIRST;
         } // end of behavior for BEVERAGE__FIRST
     }
     
     #BEVERAGE__FIRST_exit()
     {
         // BEVERAGE__FIRST behavior
-        // uml: exit / { this.tracer?.exitState(LightSm2.StateId.BEVERAGE__FIRST); }
+        // uml: exit / { this.tracer?.exitState('BEVERAGE__FIRST'); }
         {
-            // Step 1: execute action `this.tracer?.exitState(LightSm2.StateId.BEVERAGE__FIRST);`
-            this.tracer?.exitState(LightSm2.StateId.BEVERAGE__FIRST);
+            // Step 1: execute action `this.tracer?.exitState('BEVERAGE__FIRST');`
+            this.tracer?.exitState('BEVERAGE__FIRST');
         } // end of behavior for BEVERAGE__FIRST
         
         // adjust function pointers for this state's exit
@@ -516,13 +667,13 @@ evaluateGuard = null;
         // No ancestor state handles `ev1` event.
         
         // BEVERAGE__FIRST behavior
-        // uml: EV1 / { this.tracer.edgeTransition("edge3"); } TransitionTo(COFFEE)
+        // uml: EV1 / { this.tracer?.edgeTransition("edge3"); } TransitionTo(COFFEE)
         {
             // Step 1: Exit states until we reach `BEVERAGE` state (Least Common Ancestor for transition).
             this.#BEVERAGE__FIRST_exit();
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge3");`.
-            this.tracer.edgeTransition("edge3");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge3");`.
+            this.tracer?.edgeTransition("edge3");
             
             // Step 3: Enter/move towards transition target `COFFEE`.
             this.#COFFEE_enter();
@@ -546,34 +697,34 @@ evaluateGuard = null;
         this.#currentEventHandlers[LightSm2.EventId.EV1] = this.#COFFEE_ev1;
         
         // COFFEE behavior
-        // uml: enter / { this.tracer?.enterState(LightSm2.StateId.COFFEE); }
+        // uml: enter / { this.tracer?.enterState('COFFEE'); }
         {
-            // Step 1: execute action `this.tracer?.enterState(LightSm2.StateId.COFFEE);`
-            this.tracer?.enterState(LightSm2.StateId.COFFEE);
+            // Step 1: execute action `this.tracer?.enterState('COFFEE');`
+            this.tracer?.enterState('COFFEE');
         } // end of behavior for COFFEE
         
         // COFFEE behavior
-        // uml: enter / { this.tracer.log("FSM would execute action: " + "do_x();"); }
+        // uml: enter / { this.tracer?.log("⚡ FSM would execute action: " + "do_x();"); }
         {
-            // Step 1: execute action `this.tracer.log("FSM would execute action: " + "do_x();");`
-            this.tracer.log("FSM would execute action: " + "do_x();");
+            // Step 1: execute action `this.tracer?.log("⚡ FSM would execute action: " + "do_x();");`
+            this.tracer?.log("⚡ FSM would execute action: " + "do_x();");
         } // end of behavior for COFFEE
         
         // COFFEE behavior
-        // uml: enter / { $gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.COFFEE;)this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.COFFEE;)"); }
+        // uml: enter / { $gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.COFFEE;) }
         {
-            // Step 1: execute action `$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.COFFEE;)this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.COFFEE;)");`
-            this.vars.ORDER_MENU_history = LightSm2.ORDER_MENU_HistoryId.COFFEE;this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.COFFEE;)");
+            // Step 1: execute action `$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.COFFEE;)`
+            this.vars.ORDER_MENU_history = LightSm2.ORDER_MENU_HistoryId.COFFEE;
         } // end of behavior for COFFEE
     }
     
     #COFFEE_exit()
     {
         // COFFEE behavior
-        // uml: exit / { this.tracer?.exitState(LightSm2.StateId.COFFEE); }
+        // uml: exit / { this.tracer?.exitState('COFFEE'); }
         {
-            // Step 1: execute action `this.tracer?.exitState(LightSm2.StateId.COFFEE);`
-            this.tracer?.exitState(LightSm2.StateId.COFFEE);
+            // Step 1: execute action `this.tracer?.exitState('COFFEE');`
+            this.tracer?.exitState('COFFEE');
         } // end of behavior for COFFEE
         
         // adjust function pointers for this state's exit
@@ -586,13 +737,13 @@ evaluateGuard = null;
         // No ancestor state handles `ev1` event.
         
         // COFFEE behavior
-        // uml: EV1 / { this.tracer.edgeTransition("edge4"); } TransitionTo(TEA)
+        // uml: EV1 / { this.tracer?.edgeTransition("edge4"); } TransitionTo(TEA)
         {
             // Step 1: Exit states until we reach `BEVERAGE` state (Least Common Ancestor for transition).
             this.#COFFEE_exit();
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge4");`.
-            this.tracer.edgeTransition("edge4");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge4");`.
+            this.tracer?.edgeTransition("edge4");
             
             // Step 3: Enter/move towards transition target `TEA`.
             this.#TEA_enter();
@@ -617,27 +768,27 @@ evaluateGuard = null;
         this.#currentEventHandlers[LightSm2.EventId.EV2] = this.#TEA_ev2;
         
         // TEA behavior
-        // uml: enter / { this.tracer?.enterState(LightSm2.StateId.TEA); }
+        // uml: enter / { this.tracer?.enterState('TEA'); }
         {
-            // Step 1: execute action `this.tracer?.enterState(LightSm2.StateId.TEA);`
-            this.tracer?.enterState(LightSm2.StateId.TEA);
+            // Step 1: execute action `this.tracer?.enterState('TEA');`
+            this.tracer?.enterState('TEA');
         } // end of behavior for TEA
         
         // TEA behavior
-        // uml: enter / { $gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.TEA;)this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.TEA;)"); }
+        // uml: enter / { $gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.TEA;) }
         {
-            // Step 1: execute action `$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.TEA;)this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.TEA;)");`
-            this.vars.ORDER_MENU_history = LightSm2.ORDER_MENU_HistoryId.TEA;this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.TEA;)");
+            // Step 1: execute action `$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.TEA;)`
+            this.vars.ORDER_MENU_history = LightSm2.ORDER_MENU_HistoryId.TEA;
         } // end of behavior for TEA
     }
     
     #TEA_exit()
     {
         // TEA behavior
-        // uml: exit / { this.tracer?.exitState(LightSm2.StateId.TEA); }
+        // uml: exit / { this.tracer?.exitState('TEA'); }
         {
-            // Step 1: execute action `this.tracer?.exitState(LightSm2.StateId.TEA);`
-            this.tracer?.exitState(LightSm2.StateId.TEA);
+            // Step 1: execute action `this.tracer?.exitState('TEA');`
+            this.tracer?.exitState('TEA');
         } // end of behavior for TEA
         
         // adjust function pointers for this state's exit
@@ -651,13 +802,13 @@ evaluateGuard = null;
         // No ancestor state handles `ev1` event.
         
         // TEA behavior
-        // uml: EV1 / { this.tracer.edgeTransition("edge5"); } TransitionTo(COFFEE)
+        // uml: EV1 / { this.tracer?.edgeTransition("edge5"); } TransitionTo(COFFEE)
         {
             // Step 1: Exit states until we reach `BEVERAGE` state (Least Common Ancestor for transition).
             this.#TEA_exit();
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge5");`.
-            this.tracer.edgeTransition("edge5");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge5");`.
+            this.tracer?.edgeTransition("edge5");
             
             // Step 3: Enter/move towards transition target `COFFEE`.
             this.#COFFEE_enter();
@@ -675,13 +826,13 @@ evaluateGuard = null;
         this.#ancestorEventHandler = this.#BEVERAGE_ev2;
         
         // TEA behavior
-        // uml: EV2 / { this.tracer.edgeTransition("edge6"); } TransitionTo(BEVERAGE.<InitialState>)
+        // uml: EV2 / { this.tracer?.edgeTransition("edge6"); } TransitionTo(BEVERAGE.<InitialState>)
         {
             // Step 1: Exit states until we reach `BEVERAGE` state (Least Common Ancestor for transition).
             this.#TEA_exit();
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge6");`.
-            this.tracer.edgeTransition("edge6");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge6");`.
+            this.tracer?.edgeTransition("edge6");
             
             // Step 3: Enter/move towards transition target `BEVERAGE.<InitialState>`.
             // BEVERAGE.<InitialState> is a pseudo state and cannot have an `enter` trigger.
@@ -705,27 +856,27 @@ evaluateGuard = null;
         this.#currentEventHandlers[LightSm2.EventId.EV2] = this.#FOOD_ev2;
         
         // FOOD behavior
-        // uml: enter / { this.tracer?.enterState(LightSm2.StateId.FOOD); }
+        // uml: enter / { this.tracer?.enterState('FOOD'); }
         {
-            // Step 1: execute action `this.tracer?.enterState(LightSm2.StateId.FOOD);`
-            this.tracer?.enterState(LightSm2.StateId.FOOD);
+            // Step 1: execute action `this.tracer?.enterState('FOOD');`
+            this.tracer?.enterState('FOOD');
         } // end of behavior for FOOD
         
         // FOOD behavior
-        // uml: enter / { $gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.FOOD;)this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.FOOD;)"); }
+        // uml: enter / { $gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.FOOD;) }
         {
-            // Step 1: execute action `$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.FOOD;)this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.FOOD;)");`
-            this.vars.ORDER_MENU_history = LightSm2.ORDER_MENU_HistoryId.FOOD;this.tracer.log("Executed action: " + "$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.FOOD;)");
+            // Step 1: execute action `$gil(this.vars.ORDER_MENU_history = ORDER_MENU_HistoryId.FOOD;)`
+            this.vars.ORDER_MENU_history = LightSm2.ORDER_MENU_HistoryId.FOOD;
         } // end of behavior for FOOD
     }
     
     #FOOD_exit()
     {
         // FOOD behavior
-        // uml: exit / { this.tracer?.exitState(LightSm2.StateId.FOOD); }
+        // uml: exit / { this.tracer?.exitState('FOOD'); }
         {
-            // Step 1: execute action `this.tracer?.exitState(LightSm2.StateId.FOOD);`
-            this.tracer?.exitState(LightSm2.StateId.FOOD);
+            // Step 1: execute action `this.tracer?.exitState('FOOD');`
+            this.tracer?.exitState('FOOD');
         } // end of behavior for FOOD
         
         // adjust function pointers for this state's exit
@@ -739,25 +890,25 @@ evaluateGuard = null;
         // No ancestor state handles `escape` event.
         
         // FOOD behavior
-        // uml: ESCAPE / { this.tracer.edgeTransition("edge8"); } TransitionTo(ORDER_MENU.<ExitPoint>(1))
+        // uml: ESCAPE / { this.tracer?.edgeTransition("edge8"); } TransitionTo(ORDER_MENU.<ExitPoint>(1))
         {
             // Step 1: Exit states until we reach `ORDER_MENU` state (Least Common Ancestor for transition).
             this.#exitUpToStateHandler(this.#ORDER_MENU_exit);
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge8");`.
-            this.tracer.edgeTransition("edge8");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge8");`.
+            this.tracer?.edgeTransition("edge8");
             
             // Step 3: Enter/move towards transition target `ORDER_MENU.<ExitPoint>(1)`.
             // ORDER_MENU.<ExitPoint>(1) is a pseudo state and cannot have an `enter` trigger.
             
             // ORDER_MENU.<ExitPoint>(1) behavior
-            // uml: / { this.tracer.edgeTransition("edge14"); } TransitionTo(WAITING)
+            // uml: / { this.tracer?.edgeTransition("edge14"); } TransitionTo(WAITING)
             {
                 // Step 1: Exit states until we reach `ROOT` state (Least Common Ancestor for transition).
                 this.#ORDER_MENU_exit();
                 
-                // Step 2: Transition action: `this.tracer.edgeTransition("edge14");`.
-                this.tracer.edgeTransition("edge14");
+                // Step 2: Transition action: `this.tracer?.edgeTransition("edge14");`.
+                this.tracer?.edgeTransition("edge14");
                 
                 // Step 3: Enter/move towards transition target `WAITING`.
                 this.#WAITING_enter();
@@ -775,25 +926,25 @@ evaluateGuard = null;
         // No ancestor state handles `ev2` event.
         
         // FOOD behavior
-        // uml: EV2 / { this.tracer.edgeTransition("edge7"); } TransitionTo(ORDER_MENU.<ChoicePoint>(bev_choice))
+        // uml: EV2 / { this.tracer?.edgeTransition("edge7"); } TransitionTo(ORDER_MENU.<ChoicePoint>(bev_choice))
         {
             // Step 1: Exit states until we reach `ORDER_MENU` state (Least Common Ancestor for transition).
             this.#exitUpToStateHandler(this.#ORDER_MENU_exit);
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge7");`.
-            this.tracer.edgeTransition("edge7");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge7");`.
+            this.tracer?.edgeTransition("edge7");
             
             // Step 3: Enter/move towards transition target `ORDER_MENU.<ChoicePoint>(bev_choice)`.
             // ORDER_MENU.<ChoicePoint>(bev_choice) is a pseudo state and cannot have an `enter` trigger.
             
             // ORDER_MENU.<ChoicePoint>(bev_choice) behavior
-            // uml: [this.tracer.log("User evaluating guard: " + "a > b") || this.evaluateGuard("a > b")] / { this.tracer.edgeTransition("edge16"); } TransitionTo(TEA)
-            if (this.tracer.log("User evaluating guard: " + "a > b") || this.evaluateGuard("a > b"))
+            // uml: [this.tracer?.log("🛡️ User evaluating guard: " + "a > b") || this.evaluateGuard("a > b")] / { this.tracer?.edgeTransition("edge16"); } TransitionTo(TEA)
+            if (this.tracer?.log("🛡️ User evaluating guard: " + "a > b") || this.evaluateGuard("a > b"))
             {
                 // Step 1: Exit states until we reach `ORDER_MENU` state (Least Common Ancestor for transition). Already at LCA, no exiting required.
                 
-                // Step 2: Transition action: `this.tracer.edgeTransition("edge16");`.
-                this.tracer.edgeTransition("edge16");
+                // Step 2: Transition action: `this.tracer?.edgeTransition("edge16");`.
+                this.tracer?.edgeTransition("edge16");
                 
                 // Step 3: Enter/move towards transition target `TEA`.
                 this.#BEVERAGE_enter();
@@ -806,12 +957,12 @@ evaluateGuard = null;
             } // end of behavior for ORDER_MENU.<ChoicePoint>(bev_choice)
             
             // ORDER_MENU.<ChoicePoint>(bev_choice) behavior
-            // uml: else / { this.tracer.edgeTransition("edge17"); } TransitionTo(BEVERAGE)
+            // uml: else / { this.tracer?.edgeTransition("edge17"); } TransitionTo(BEVERAGE)
             {
                 // Step 1: Exit states until we reach `ORDER_MENU` state (Least Common Ancestor for transition). Already at LCA, no exiting required.
                 
-                // Step 2: Transition action: `this.tracer.edgeTransition("edge17");`.
-                this.tracer.edgeTransition("edge17");
+                // Step 2: Transition action: `this.tracer?.edgeTransition("edge17");`.
+                this.tracer?.edgeTransition("edge17");
                 
                 // Step 3: Enter/move towards transition target `BEVERAGE`.
                 this.#BEVERAGE_enter();
@@ -826,12 +977,12 @@ evaluateGuard = null;
     #FOOD_InitialState_transition()
     {
         // FOOD.<InitialState> behavior
-        // uml: / { this.tracer.edgeTransition("edge9"); } TransitionTo(FOOD__FIRST)
+        // uml: / { this.tracer?.edgeTransition("edge9"); } TransitionTo(FOOD__FIRST)
         {
             // Step 1: Exit states until we reach `FOOD` state (Least Common Ancestor for transition). Already at LCA, no exiting required.
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge9");`.
-            this.tracer.edgeTransition("edge9");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge9");`.
+            this.tracer?.edgeTransition("edge9");
             
             // Step 3: Enter/move towards transition target `FOOD__FIRST`.
             this.#FOOD__FIRST_enter();
@@ -855,20 +1006,20 @@ evaluateGuard = null;
         this.#currentEventHandlers[LightSm2.EventId.EV1] = this.#FOOD__FIRST_ev1;
         
         // FOOD__FIRST behavior
-        // uml: enter / { this.tracer?.enterState(LightSm2.StateId.FOOD__FIRST); }
+        // uml: enter / { this.tracer?.enterState('FOOD__FIRST'); }
         {
-            // Step 1: execute action `this.tracer?.enterState(LightSm2.StateId.FOOD__FIRST);`
-            this.tracer?.enterState(LightSm2.StateId.FOOD__FIRST);
+            // Step 1: execute action `this.tracer?.enterState('FOOD__FIRST');`
+            this.tracer?.enterState('FOOD__FIRST');
         } // end of behavior for FOOD__FIRST
     }
     
     #FOOD__FIRST_exit()
     {
         // FOOD__FIRST behavior
-        // uml: exit / { this.tracer?.exitState(LightSm2.StateId.FOOD__FIRST); }
+        // uml: exit / { this.tracer?.exitState('FOOD__FIRST'); }
         {
-            // Step 1: execute action `this.tracer?.exitState(LightSm2.StateId.FOOD__FIRST);`
-            this.tracer?.exitState(LightSm2.StateId.FOOD__FIRST);
+            // Step 1: execute action `this.tracer?.exitState('FOOD__FIRST');`
+            this.tracer?.exitState('FOOD__FIRST');
         } // end of behavior for FOOD__FIRST
         
         // adjust function pointers for this state's exit
@@ -881,13 +1032,13 @@ evaluateGuard = null;
         // No ancestor state handles `ev1` event.
         
         // FOOD__FIRST behavior
-        // uml: EV1 / { this.tracer.edgeTransition("edge10"); } TransitionTo(POTATO)
+        // uml: EV1 / { this.tracer?.edgeTransition("edge10"); } TransitionTo(POTATO)
         {
             // Step 1: Exit states until we reach `FOOD` state (Least Common Ancestor for transition).
             this.#FOOD__FIRST_exit();
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge10");`.
-            this.tracer.edgeTransition("edge10");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge10");`.
+            this.tracer?.edgeTransition("edge10");
             
             // Step 3: Enter/move towards transition target `POTATO`.
             this.#POTATO_enter();
@@ -911,20 +1062,20 @@ evaluateGuard = null;
         this.#currentEventHandlers[LightSm2.EventId.EV1] = this.#POTATO_ev1;
         
         // POTATO behavior
-        // uml: enter / { this.tracer?.enterState(LightSm2.StateId.POTATO); }
+        // uml: enter / { this.tracer?.enterState('POTATO'); }
         {
-            // Step 1: execute action `this.tracer?.enterState(LightSm2.StateId.POTATO);`
-            this.tracer?.enterState(LightSm2.StateId.POTATO);
+            // Step 1: execute action `this.tracer?.enterState('POTATO');`
+            this.tracer?.enterState('POTATO');
         } // end of behavior for POTATO
     }
     
     #POTATO_exit()
     {
         // POTATO behavior
-        // uml: exit / { this.tracer?.exitState(LightSm2.StateId.POTATO); }
+        // uml: exit / { this.tracer?.exitState('POTATO'); }
         {
-            // Step 1: execute action `this.tracer?.exitState(LightSm2.StateId.POTATO);`
-            this.tracer?.exitState(LightSm2.StateId.POTATO);
+            // Step 1: execute action `this.tracer?.exitState('POTATO');`
+            this.tracer?.exitState('POTATO');
         } // end of behavior for POTATO
         
         // adjust function pointers for this state's exit
@@ -937,13 +1088,13 @@ evaluateGuard = null;
         // No ancestor state handles `ev1` event.
         
         // POTATO behavior
-        // uml: EV1 / { this.tracer.edgeTransition("edge11"); } TransitionTo(SUSHI)
+        // uml: EV1 / { this.tracer?.edgeTransition("edge11"); } TransitionTo(SUSHI)
         {
             // Step 1: Exit states until we reach `FOOD` state (Least Common Ancestor for transition).
             this.#POTATO_exit();
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge11");`.
-            this.tracer.edgeTransition("edge11");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge11");`.
+            this.tracer?.edgeTransition("edge11");
             
             // Step 3: Enter/move towards transition target `SUSHI`.
             this.#SUSHI_enter();
@@ -967,20 +1118,20 @@ evaluateGuard = null;
         this.#currentEventHandlers[LightSm2.EventId.EV1] = this.#SUSHI_ev1;
         
         // SUSHI behavior
-        // uml: enter / { this.tracer?.enterState(LightSm2.StateId.SUSHI); }
+        // uml: enter / { this.tracer?.enterState('SUSHI'); }
         {
-            // Step 1: execute action `this.tracer?.enterState(LightSm2.StateId.SUSHI);`
-            this.tracer?.enterState(LightSm2.StateId.SUSHI);
+            // Step 1: execute action `this.tracer?.enterState('SUSHI');`
+            this.tracer?.enterState('SUSHI');
         } // end of behavior for SUSHI
     }
     
     #SUSHI_exit()
     {
         // SUSHI behavior
-        // uml: exit / { this.tracer?.exitState(LightSm2.StateId.SUSHI); }
+        // uml: exit / { this.tracer?.exitState('SUSHI'); }
         {
-            // Step 1: execute action `this.tracer?.exitState(LightSm2.StateId.SUSHI);`
-            this.tracer?.exitState(LightSm2.StateId.SUSHI);
+            // Step 1: execute action `this.tracer?.exitState('SUSHI');`
+            this.tracer?.exitState('SUSHI');
         } // end of behavior for SUSHI
         
         // adjust function pointers for this state's exit
@@ -993,13 +1144,13 @@ evaluateGuard = null;
         // No ancestor state handles `ev1` event.
         
         // SUSHI behavior
-        // uml: EV1 / { this.tracer.edgeTransition("edge12"); } TransitionTo(FOOD__FIRST)
+        // uml: EV1 / { this.tracer?.edgeTransition("edge12"); } TransitionTo(FOOD__FIRST)
         {
             // Step 1: Exit states until we reach `FOOD` state (Least Common Ancestor for transition).
             this.#SUSHI_exit();
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge12");`.
-            this.tracer.edgeTransition("edge12");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge12");`.
+            this.tracer?.edgeTransition("edge12");
             
             // Step 3: Enter/move towards transition target `FOOD__FIRST`.
             this.#FOOD__FIRST_enter();
@@ -1023,20 +1174,20 @@ evaluateGuard = null;
         this.#currentEventHandlers[LightSm2.EventId.EV3] = this.#WAITING_ev3;
         
         // WAITING behavior
-        // uml: enter / { this.tracer?.enterState(LightSm2.StateId.WAITING); }
+        // uml: enter / { this.tracer?.enterState('WAITING'); }
         {
-            // Step 1: execute action `this.tracer?.enterState(LightSm2.StateId.WAITING);`
-            this.tracer?.enterState(LightSm2.StateId.WAITING);
+            // Step 1: execute action `this.tracer?.enterState('WAITING');`
+            this.tracer?.enterState('WAITING');
         } // end of behavior for WAITING
     }
     
     #WAITING_exit()
     {
         // WAITING behavior
-        // uml: exit / { this.tracer?.exitState(LightSm2.StateId.WAITING); }
+        // uml: exit / { this.tracer?.exitState('WAITING'); }
         {
-            // Step 1: execute action `this.tracer?.exitState(LightSm2.StateId.WAITING);`
-            this.tracer?.exitState(LightSm2.StateId.WAITING);
+            // Step 1: execute action `this.tracer?.exitState('WAITING');`
+            this.tracer?.exitState('WAITING');
         } // end of behavior for WAITING
         
         // adjust function pointers for this state's exit
@@ -1049,36 +1200,37 @@ evaluateGuard = null;
         // No ancestor state handles `ev3` event.
         
         // WAITING behavior
-        // uml: EV3 / { this.tracer.edgeTransition("edge18"); } TransitionTo(ORDER_MENU.<EntryPoint>(to_history))
+        // uml: EV3 / { this.tracer?.edgeTransition("edge18"); } TransitionTo(ORDER_MENU.<EntryPoint>(to_history))
         {
             // Step 1: Exit states until we reach `ROOT` state (Least Common Ancestor for transition).
             this.#WAITING_exit();
             
-            // Step 2: Transition action: `this.tracer.edgeTransition("edge18");`.
-            this.tracer.edgeTransition("edge18");
+            // Step 2: Transition action: `this.tracer?.edgeTransition("edge18");`.
+            this.tracer?.edgeTransition("edge18");
             
             // Step 3: Enter/move towards transition target `ORDER_MENU.<EntryPoint>(to_history)`.
             this.#ORDER_MENU_enter();
             // ORDER_MENU.<EntryPoint>(to_history) is a pseudo state and cannot have an `enter` trigger.
             
             // ORDER_MENU.<EntryPoint>(to_history) behavior
-            // uml: / { this.tracer.edgeTransition("edge13"); } TransitionTo(ORDER_MENU.<History>)
+            // uml: / { this.tracer?.edgeTransition("edge13"); } TransitionTo(ORDER_MENU.<History>)
             {
                 // Step 1: Exit states until we reach `ORDER_MENU` state (Least Common Ancestor for transition). Already at LCA, no exiting required.
                 
-                // Step 2: Transition action: `this.tracer.edgeTransition("edge13");`.
-                this.tracer.edgeTransition("edge13");
+                // Step 2: Transition action: `this.tracer?.edgeTransition("edge13");`.
+                this.tracer?.edgeTransition("edge13");
                 
                 // Step 3: Enter/move towards transition target `ORDER_MENU.<History>`.
                 // ORDER_MENU.<History> is a pseudo state and cannot have an `enter` trigger.
                 
                 // ORDER_MENU.<History> behavior
-                // uml: [this.tracer.log("History state evaluating guard: " + "$gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.FOOD)") || $gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.FOOD)] TransitionTo(FOOD)
-                if (this.tracer.log("History state evaluating guard: " + "$gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.FOOD)") || this.vars.ORDER_MENU_history == LightSm2.ORDER_MENU_HistoryId.FOOD)
+                // uml: [$gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.FOOD)] / { this.tracer?.log("🕑 History: transitioning to FOOD."); } TransitionTo(FOOD)
+                if (this.vars.ORDER_MENU_history == LightSm2.ORDER_MENU_HistoryId.FOOD)
                 {
                     // Step 1: Exit states until we reach `ORDER_MENU` state (Least Common Ancestor for transition). Already at LCA, no exiting required.
                     
-                    // Step 2: Transition action: ``.
+                    // Step 2: Transition action: `this.tracer?.log("🕑 History: transitioning to FOOD.");`.
+                    this.tracer?.log("🕑 History: transitioning to FOOD.");
                     
                     // Step 3: Enter/move towards transition target `FOOD`.
                     this.#FOOD_enter();
@@ -1089,12 +1241,13 @@ evaluateGuard = null;
                 } // end of behavior for ORDER_MENU.<History>
                 
                 // ORDER_MENU.<History> behavior
-                // uml: [this.tracer.log("History state evaluating guard: " + "$gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.BEVERAGE__FIRST)") || $gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.BEVERAGE__FIRST)] TransitionTo(BEVERAGE__FIRST)
-                if (this.tracer.log("History state evaluating guard: " + "$gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.BEVERAGE__FIRST)") || this.vars.ORDER_MENU_history == LightSm2.ORDER_MENU_HistoryId.BEVERAGE__FIRST)
+                // uml: [$gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.BEVERAGE__FIRST)] / { this.tracer?.log("🕑 History: transitioning to BEVERAGE__FIRST."); } TransitionTo(BEVERAGE__FIRST)
+                if (this.vars.ORDER_MENU_history == LightSm2.ORDER_MENU_HistoryId.BEVERAGE__FIRST)
                 {
                     // Step 1: Exit states until we reach `ORDER_MENU` state (Least Common Ancestor for transition). Already at LCA, no exiting required.
                     
-                    // Step 2: Transition action: ``.
+                    // Step 2: Transition action: `this.tracer?.log("🕑 History: transitioning to BEVERAGE__FIRST.");`.
+                    this.tracer?.log("🕑 History: transitioning to BEVERAGE__FIRST.");
                     
                     // Step 3: Enter/move towards transition target `BEVERAGE__FIRST`.
                     this.#BEVERAGE_enter();
@@ -1107,12 +1260,13 @@ evaluateGuard = null;
                 } // end of behavior for ORDER_MENU.<History>
                 
                 // ORDER_MENU.<History> behavior
-                // uml: [this.tracer.log("History state evaluating guard: " + "$gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.COFFEE)") || $gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.COFFEE)] TransitionTo(COFFEE)
-                if (this.tracer.log("History state evaluating guard: " + "$gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.COFFEE)") || this.vars.ORDER_MENU_history == LightSm2.ORDER_MENU_HistoryId.COFFEE)
+                // uml: [$gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.COFFEE)] / { this.tracer?.log("🕑 History: transitioning to COFFEE."); } TransitionTo(COFFEE)
+                if (this.vars.ORDER_MENU_history == LightSm2.ORDER_MENU_HistoryId.COFFEE)
                 {
                     // Step 1: Exit states until we reach `ORDER_MENU` state (Least Common Ancestor for transition). Already at LCA, no exiting required.
                     
-                    // Step 2: Transition action: ``.
+                    // Step 2: Transition action: `this.tracer?.log("🕑 History: transitioning to COFFEE.");`.
+                    this.tracer?.log("🕑 History: transitioning to COFFEE.");
                     
                     // Step 3: Enter/move towards transition target `COFFEE`.
                     this.#BEVERAGE_enter();
@@ -1125,12 +1279,13 @@ evaluateGuard = null;
                 } // end of behavior for ORDER_MENU.<History>
                 
                 // ORDER_MENU.<History> behavior
-                // uml: [this.tracer.log("History state evaluating guard: " + "$gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.TEA)") || $gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.TEA)] TransitionTo(TEA)
-                if (this.tracer.log("History state evaluating guard: " + "$gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.TEA)") || this.vars.ORDER_MENU_history == LightSm2.ORDER_MENU_HistoryId.TEA)
+                // uml: [$gil(this.vars.ORDER_MENU_history == ORDER_MENU_HistoryId.TEA)] / { this.tracer?.log("🕑 History: transitioning to TEA."); } TransitionTo(TEA)
+                if (this.vars.ORDER_MENU_history == LightSm2.ORDER_MENU_HistoryId.TEA)
                 {
                     // Step 1: Exit states until we reach `ORDER_MENU` state (Least Common Ancestor for transition). Already at LCA, no exiting required.
                     
-                    // Step 2: Transition action: ``.
+                    // Step 2: Transition action: `this.tracer?.log("🕑 History: transitioning to TEA.");`.
+                    this.tracer?.log("🕑 History: transitioning to TEA.");
                     
                     // Step 3: Enter/move towards transition target `TEA`.
                     this.#BEVERAGE_enter();
@@ -1143,12 +1298,12 @@ evaluateGuard = null;
                 } // end of behavior for ORDER_MENU.<History>
                 
                 // ORDER_MENU.<History> behavior
-                // uml: else / { this.tracer.log("History state taking default transition.");this.tracer.edgeTransition("edge15"); } TransitionTo(BEVERAGE)
+                // uml: else / { this.tracer?.log("🕑 History: default transition.");this.tracer?.edgeTransition("edge15"); } TransitionTo(BEVERAGE)
                 {
                     // Step 1: Exit states until we reach `ORDER_MENU` state (Least Common Ancestor for transition). Already at LCA, no exiting required.
                     
-                    // Step 2: Transition action: `this.tracer.log("History state taking default transition.");this.tracer.edgeTransition("edge15");`.
-                    this.tracer.log("History state taking default transition.");this.tracer.edgeTransition("edge15");
+                    // Step 2: Transition action: `this.tracer?.log("🕑 History: default transition.");this.tracer?.edgeTransition("edge15");`.
+                    this.tracer?.log("🕑 History: default transition.");this.tracer?.edgeTransition("edge15");
                     
                     // Step 3: Enter/move towards transition target `BEVERAGE`.
                     this.#BEVERAGE_enter();
@@ -1209,6 +1364,11 @@ evaluateGuard = null;
         document.querySelector('svg').setAttribute('height', '100%');
         document.querySelector('svg').style["max-width"] = '';
 
+        // don't scale the arrow when we scale the transition edge
+        document.querySelectorAll('g defs marker[id$=barbEnd]').forEach(marker => {
+            marker.setAttribute('markerUnits', 'userSpaceOnUse');
+        });
+
         var panZoom = window.panZoom = svgPanZoom(document.querySelector('svg'), {
             zoomEnabled: true,
             controlIconsEnabled: true,
@@ -1216,6 +1376,7 @@ evaluateGuard = null;
             center: true
         });
 
+        const diagramEventNamesArray = ['ESCAPE', 'EV1', 'EV2', 'EV3', ];
 
         const leftPane = document.querySelector(".main");
         const rightPane = document.querySelector(".sidebar");
@@ -1244,6 +1405,38 @@ evaluateGuard = null;
 
         gutter.addEventListener('mousedown', resizer);
 
+        document.getElementById('timestamps').checked = document.querySelector('table.console').classList.contains('timestamps');
+        document.getElementById('timestamps').addEventListener('change', function() {
+          if(this.checked) {
+            document.querySelector('table.console').classList.add('timestamps');
+          } else {
+            document.querySelector('table.console').classList.remove('timestamps');
+          }
+        });
+
+        document.getElementById('dropbtn').addEventListener('click', myFunction);
+
+        /* When the user clicks on the button, 
+        toggle between hiding and showing the dropdown content */
+        function myFunction() {
+          document.getElementById('myDropdown').classList.toggle('show');
+        }
+
+        // Close the dropdown if the user clicks outside of it
+        window.onclick = function(event) {
+          if (!event.target.matches('.dropbtn')) {
+            var dropdowns = document.getElementsByClassName('dropdown-content');
+            var i;
+            for (i = 0; i < dropdowns.length; i++) {
+              var openDropdown = dropdowns[i];
+              if (openDropdown.classList.contains('show')) {
+                openDropdown.classList.remove('show');
+              }
+            }
+          }
+        }
+
+
 
 
         // Convert a date to a string in the format HH:MM:SS.sss
@@ -1255,16 +1448,19 @@ evaluateGuard = null;
         }
 
         // Add a row to the history table.
-        function addHistoryRow(time, event, emphasis = false) {
+        function addHistoryRow(time, event, html = false) {
             var row = document.createElement('tr');
             var timeCell = document.createElement('td');
             timeCell.innerText = formatTime(time);
             timeCell.classList.add('timestamp');
             var eventCell = document.createElement('td');
-            eventCell.innerText = event;
-            if(emphasis) {
-                eventCell.classList.add('emphasis');                
+
+            if(html) {
+              eventCell.innerHTML = event;
+            } else {
+              eventCell.innerText = event;
             }
+
             row.appendChild(timeCell);
             row.appendChild(eventCell);
             document.querySelector('tbody').appendChild(row);
@@ -1281,20 +1477,19 @@ evaluateGuard = null;
         function highlightEdge(edgeId) {
             var edge = document.getElementById(edgeId);
             if (edge) {
-                edge.style.stroke = 'red';
-                highlightedEdges.add(edge);
+              edge.classList.add('active');
+              highlightedEdges.add(edge);
             }
         }
 
         function clearHighlightedEdges() {
             for (const edge of highlightedEdges) {
-                const showOldTraversal = true;
-                if (showOldTraversal) {
-                    // shows that the edge was traversed. Optional, but kinda nice.
-                    edge.style.stroke = 'green';
-                } else {
-                    edge.style.stroke = '';
-                }
+              edge.classList.remove('active');
+              const showOldTraversal = false;
+              if (showOldTraversal) {
+                  // shows that the edge was traversed. Optional, but kinda nice.
+                  edge.style.stroke = 'green';
+              }
             }
             highlightedEdges.clear();
         }
@@ -1304,37 +1499,59 @@ evaluateGuard = null;
         // when using LightSm2.js in your own applications, although you may
         // choose to implement a tracer for debugging purposes.
         sm.tracer = {
-            enterState: (stateId) => {
-                var name = LightSm2.stateIdToString(stateId);
-                document.querySelector('g[data-id=' + name + ']')?.classList.add('active');
-                sm.tracer.log("Entered " + name);
+            enterState: (mermaidName) => {
+                var e = document.querySelector('g[data-id=' + mermaidName + ']');
+                if(e) {
+                  e.classList.add('active');
+                  panOnScreen(e);
+                }
+                sm.tracer.log('➡️ Entered ' + mermaidName);
             },
-            exitState: (stateId) => {
-                var name = LightSm2.stateIdToString(stateId);
-                document.querySelector('g[data-id=' + name + ']')?.classList.remove('active');
+            exitState: (mermaidName) => {
+                document.querySelector('g[data-id=' + mermaidName + ']')?.classList.remove('active');
             },
             edgeTransition: (edgeId) => {
                 highlightEdge(edgeId);
             },
-            log: (message, emphasis=false) => {
-                addHistoryRow(new Date(), message, emphasis);
+            log: (message, html=false) => {
+                addHistoryRow(new Date(), message, html);
             }
         };
 
         // Wire up the buttons that dispatch events for the state machine.
-        for (const eventName in LightSm2.EventId) {
+        diagramEventNamesArray.forEach(diagramEventName => {
             var button = document.createElement('button');
-            button.id = 'button_' + eventName;
-            button.innerText = eventName;
+            button.id = 'button_' + diagramEventName;
+            button.innerText = diagramEventName;
             button.addEventListener('click', () => {
                 clearHighlightedEdges();
-                sm.tracer.log("Dispatched " + eventName, true);
-                sm.dispatchEvent(LightSm2.EventId[eventName]); 
+                sm.tracer?.log('<span class="dispatched"><span class="trigger">' + diagramEventName + '</span> DISPATCHED</span>', true);
+                const fsmEventName = diagramEventName.toUpperCase();
+                sm.dispatchEvent(LightSm2.EventId[fsmEventName]); 
             });
             document.getElementById('buttons').appendChild(button);
-        }
+        });
 
+        sm.tracer?.log('<span class="dispatched">START</span>', true);
         sm.start();
+
+
+        function panOnScreen(element) {
+          if(!element) return;
+
+          var bounds = element.getBoundingClientRect();
+          if(bounds.x<0 || bounds.y<0) {
+              var x = Math.max(0, -bounds.x + 20);
+              var y = Math.max(0, -bounds.y + 20);
+              window.panZoom.panBy({x: x, y: y});
+          }
+          var panebounds = document.querySelector('svg').getBoundingClientRect();
+          if(bounds.x>panebounds.width || bounds.y>panebounds.height) {
+              var x = Math.min(0, panebounds.width - bounds.x - bounds.width - 20);
+              var y = Math.min(0, panebounds.height - bounds.y - bounds.height - 20);
+              window.panZoom.panBy({x: x, y: y});
+          }
+        }
     </script>
 
 

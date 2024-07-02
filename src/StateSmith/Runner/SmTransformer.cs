@@ -39,6 +39,11 @@ public class SmTransformer
         InsertAfterFirstMatch(id.ToString(), new TransformationStep(action));
     }
 
+    public void InsertAfterFirstMatch(string id, Action<StateMachine> action)
+    {
+        InsertAfterFirstMatch(id, new TransformationStep(action));
+    }
+
     public void InsertAfterFirstMatch(Enum id, TransformationStep step)
     {
         InsertAfterFirstMatch(id.ToString(), step);
@@ -55,6 +60,11 @@ public class SmTransformer
     public void InsertBeforeFirstMatch(Enum id, Action<StateMachine> action)
     {
         InsertBeforeFirstMatch(id.ToString(), new TransformationStep(action));
+    }
+
+    public void InsertBeforeFirstMatch(string id, Action<StateMachine> action)
+    {
+        InsertBeforeFirstMatch(id, new TransformationStep(action));
     }
 
     public void InsertBeforeFirstMatch(Enum id, TransformationStep step)
@@ -78,5 +88,16 @@ public class SmTransformer
         int index = transformationPipeline.FindIndex(s => s.Id == id);
         if (index == -1) throw new ArgumentOutOfRangeException($"{nameof(TransformationStep)} with id `{id}` was not found");
         return index;
+    }
+
+    public void Remove(Enum id)
+    {
+        Remove(id.ToString());
+    }
+
+    public void Remove(string id)
+    {
+        int index = GetMatchIndex(id);
+        transformationPipeline.RemoveAt(index);
     }
 }

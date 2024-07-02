@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using StateSmith.Output;
 using StateSmith.Output.UserConfig;
 using StateSmith.Common;
+using StateSmith.SmGraph;
+using System;
 
 namespace StateSmith.Runner;
 
@@ -22,6 +24,7 @@ public class SmRunner : SmRunner.IExperimentalAccess
     readonly RunnerSettings settings;
 
     private readonly IRenderConfig iRenderConfig;
+    private readonly bool enablePreDiagramBasedSettings;
 
     /// <summary>
     /// The path to the file that called a <see cref="SmRunner"/> constructor. Allows for convenient relative path
@@ -30,17 +33,19 @@ public class SmRunner : SmRunner.IExperimentalAccess
     readonly string callerFilePath;
 
     /// <summary>
-    /// Constructor.
+    /// Constructor. Will attempt to read settings from the diagram file.
     /// </summary>
     /// <param name="settings"></param>
     /// <param name="renderConfig"></param>
     /// <param name="callerFilePath">Don't provide this argument. C# will automatically populate it.</param>
-    public SmRunner(RunnerSettings settings, IRenderConfig? renderConfig, [System.Runtime.CompilerServices.CallerFilePath] string? callerFilePath = null)
+    /// <param name="enablePDBS">User code should leave unspecified for now.</param>
+    public SmRunner(RunnerSettings settings, IRenderConfig? renderConfig, [System.Runtime.CompilerServices.CallerFilePath] string? callerFilePath = null, bool enablePDBS = true)
     {
         SmRunnerInternal.AppUseDecimalPeriod();
 
         this.settings = settings;
         this.iRenderConfig = renderConfig ?? new DummyIRenderConfig();
+        this.enablePreDiagramBasedSettings = enablePDBS;
         this.callerFilePath = callerFilePath.ThrowIfNull();
         SmRunnerInternal.ResolveFilePaths(settings, callerFilePath);
 
@@ -49,7 +54,7 @@ public class SmRunner : SmRunner.IExperimentalAccess
     }
 
     /// <summary>
-    /// A convenience constructor.
+    /// A convenience constructor. Will attempt to read settings from the diagram file.
     /// </summary>
     /// <param name="diagramPath">Relative to directory of script file that calls this constructor.</param>
     /// <param name="renderConfig"></param>
@@ -57,13 +62,14 @@ public class SmRunner : SmRunner.IExperimentalAccess
     /// <param name="algorithmId">Optional. Will allow you to choose which algorithm to use when multiple are supported. Ignored if custom code generator used.</param>
     /// <param name="transpilerId">Optional. Defaults to C99. Allows you to specify which programming language to generate for. Ignored if custom code generator used.</param>
     /// <param name="callingFilePath">Should normally be left unspecified so that C# can determine it automatically.</param>
+    /// <param name="enablePDBS">User could should leave unspecified for now.</param>
     public SmRunner(string diagramPath,
         IRenderConfig? renderConfig = null,
         string? outputDirectory = null,
         AlgorithmId algorithmId = AlgorithmId.Default,
         TranspilerId transpilerId = TranspilerId.Default,
-        [System.Runtime.CompilerServices.CallerFilePath] string? callingFilePath = null)
-    : this(new RunnerSettings(diagramFile: diagramPath, outputDirectory: outputDirectory, algorithmId: algorithmId, transpilerId: transpilerId), renderConfig, callerFilePath: callingFilePath)
+        [System.Runtime.CompilerServices.CallerFilePath] string? callingFilePath = null, bool enablePDBS = true)
+    : this(new RunnerSettings(diagramFile: diagramPath, outputDirectory: outputDirectory, algorithmId: algorithmId, transpilerId: transpilerId), renderConfig, callerFilePath: callingFilePath, enablePDBS: enablePDBS)
     {
     }
 
@@ -79,11 +85,15 @@ public class SmRunner : SmRunner.IExperimentalAccess
     /// </summary>
     public void Run()
     {
+        if (settings.transpilerId == TranspilerId.NotYetSet)
+            throw new ArgumentException("TranspilerId must be set before running code generation");
+
         SmRunnerInternal.AppUseDecimalPeriod(); // done here as well to be cautious for the future
 
         PrepareBeforeRun();
         SmRunnerInternal smRunnerInternal = diServiceProvider.GetServiceOrCreateInstance();
-        
+        smRunnerInternal.preDiagramBasedSettingsAlreadyApplied = enablePreDiagramBasedSettings;
+
         // Wrap in try finally so that we can ensure that the service provider is disposed which will
         // dispose of objects that it created.
         try
@@ -103,46 +113,56 @@ public class SmRunner : SmRunner.IExperimentalAccess
 
     private void SetupDependencyInjectionAndRenderConfigs()
     {
-        var renderConfigVars = new RenderConfigVars();
-        renderConfigVars.SetFrom(iRenderConfig, settings.autoDeIndentAndTrimRenderConfigItems);
+        var renderConfigAllVars = new RenderConfigAllVars();
 
-        var renderConfigCVars = new RenderConfigCVars();
-        if (iRenderConfig is IRenderConfigC ircc)
+        ReadRenderConfigObjectToVars(renderConfigAllVars, iRenderConfig, settings.autoDeIndentAndTrimRenderConfigItems);
+
+        SetupDiProvider(diServiceProvider, renderConfigAllVars, settings, iRenderConfig);
+
+        // we disable early diagram settings reading for the simulator and some tests
+        if (enablePreDiagramBasedSettings)
         {
-            renderConfigCVars.SetFrom(ircc, settings.autoDeIndentAndTrimRenderConfigItems);
+            PreDiagramSettingsReader preDiagramSettingsReader = new(renderConfigAllVars, settings, iRenderConfig);
+            preDiagramSettingsReader.Process();
         }
 
-        var renderConfigCSharpVars = new RenderConfigCSharpVars();
-        if (iRenderConfig is IRenderConfigCSharp irccs)
-        {
-            renderConfigCSharpVars.SetFrom(irccs, settings.autoDeIndentAndTrimRenderConfigItems);
-        }
+        AlgoOrTranspilerUpdated();
+    }
 
-        var renderConfigJavaScriptVars = new RenderConfigJavaScriptVars();
-        if (iRenderConfig is IRenderConfigJavaScript rcjs)
-        {
-            renderConfigJavaScriptVars.SetFrom(rcjs, settings.autoDeIndentAndTrimRenderConfigItems);
-        }
-
-        diServiceProvider.AddConfiguration((services) =>
+    internal static void SetupDiProvider(DiServiceProvider di, RenderConfigAllVars renderConfigAllVars, RunnerSettings settings, IRenderConfig iRenderConfig)
+    {
+        di.AddConfiguration((services) =>
         {
             services.AddSingleton(settings.drawIoSettings);
             services.AddSingleton(settings.smDesignDescriber);
             services.AddSingleton(settings.style);
             services.AddSingleton<OutputInfo>();
             services.AddSingleton<IOutputInfo>((s) => s.GetService<OutputInfo>().ThrowIfNull());
-            services.AddSingleton(renderConfigVars);
-            services.AddSingleton(renderConfigCVars);
-            services.AddSingleton(renderConfigCSharpVars);
-            services.AddSingleton(renderConfigJavaScriptVars);
+            services.AddSingleton(renderConfigAllVars);
+            services.AddSingleton(renderConfigAllVars.Base);
+            services.AddSingleton(renderConfigAllVars.C);
+            services.AddSingleton(renderConfigAllVars.CSharp);
+            services.AddSingleton(renderConfigAllVars.JavaScript);
             services.AddSingleton(new ExpansionConfigReaderObjectProvider(iRenderConfig));
             services.AddSingleton(settings); // todo_low - split settings up more
             services.AddSingleton<ExpansionsPrep>();
             services.AddSingleton<FilePathPrinter>(new FilePathPrinter(settings.filePathPrintBase.ThrowIfNull()));
             services.AddSingleton(settings.algoBalanced1);
         });
+    }
 
-        AlgoOrTranspilerUpdated();
+    internal static void ReadRenderConfigObjectToVars(RenderConfigAllVars renderConfigAllVars, IRenderConfig iRenderConfig, bool autoDeIndentAndTrimRenderConfigItems)
+    {
+        renderConfigAllVars.Base.SetFrom(iRenderConfig, autoDeIndentAndTrimRenderConfigItems);
+
+        if (iRenderConfig is IRenderConfigC ircc)
+            renderConfigAllVars.C.SetFrom(ircc, autoDeIndentAndTrimRenderConfigItems);
+
+        if (iRenderConfig is IRenderConfigCSharp irccs)
+            renderConfigAllVars.CSharp.SetFrom(irccs, autoDeIndentAndTrimRenderConfigItems);
+
+        if (iRenderConfig is IRenderConfigJavaScript rcjs)
+            renderConfigAllVars.JavaScript.SetFrom(rcjs, autoDeIndentAndTrimRenderConfigItems);
     }
 
     /// <summary>

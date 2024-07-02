@@ -4,7 +4,7 @@ namespace StateSmith.Output.Sim;
 
 public class HtmlRenderer
 {
-    public static void Render(StringBuilder stringBuilder, string smName, string mocksCode, string mermaidCode, string jsCode)
+    public static void Render(StringBuilder stringBuilder, string smName, string mocksCode, string mermaidCode, string jsCode, string diagramEventNamesArray)
     {
         // Now that we are working inside the StateSmith project, we need to restrict ourselves to dotnet 6 features.
         // We can't use """raw strings""" anymore so we do manual string interpolation below string.
@@ -23,10 +23,17 @@ public class HtmlRenderer
   -->
 <html>
   <head>
+    <link rel='icon' type='image/png' href='https://statesmith.github.io/favicon.png'>
+    <link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined'>
     <style>
       body {
         display: flex;
         flex-direction: row;
+        margin: 0px;
+      }
+
+      /* Fix for mermaid content requiring scroll bars https://github.com/StateSmith/StateSmith/issues/288 */
+      pre.mermaid {
         margin: 0px;
       }
 
@@ -39,6 +46,13 @@ public class HtmlRenderer
       .pane {
         padding: 1em;
         min-width: 200px;
+      }
+
+      .titlebar-icon {
+        font-family: 'Material Symbols Outlined', sans-serif;
+        font-size: 16px;
+        color: #777;
+        border-radius: 5px;
       }
 
       .gutter {
@@ -59,6 +73,7 @@ public class HtmlRenderer
 
       .sidebar {
         width: 300px;
+        padding-top: 0px;
         position: relative;
         background-color: #f0f0f0;
         border-left: 1px solid #ccc;
@@ -76,12 +91,38 @@ public class HtmlRenderer
         border-bottom: 1px solid #ccc;
         font-weight: bold;
         padding: 5px;
+        display: flex;
       }
 
       .console {
         border-collapse: collapse;
         margin-top: 10px;
         width: 100%;
+      }
+
+      table.console td.timestamp {
+        display: none;
+      }
+
+      table.console.timestamps td.timestamp {
+        display: table-cell;
+      }
+
+      table.console td {
+          color: rgba(0, 0, 0, 0.7);
+      }
+
+      table.console td .dispatched {
+          font-weight: bold;
+          color: rgba(0, 0, 0, 1);
+      }
+
+      table.console tr:has(+tr td .dispatched) {
+          border-bottom: 0px;
+      }
+
+      table.console tr:has(+tr td .dispatched) td {
+          padding-bottom: 25px;
       }
 
       .console th {
@@ -93,13 +134,14 @@ public class HtmlRenderer
       }
 
       .console tbody {
-        display: flex;
-        flex-direction: column-reverse;
         font-family: monospace;
       }
 
-      .console td {
+      .console tr {
         border-bottom: 1px solid #ccc;
+      }
+
+      .console td {
         padding: 5px;
       }
   
@@ -107,22 +149,75 @@ public class HtmlRenderer
         font-size: small;
       }
 
-      .console td.emphasis {
-        font-weight: bold;
-      }
-
       .history {
-        margin-top: 30px;
-        overflow: scroll;    
+        margin-top: 30px;       
+        display: flex;
+        overflow: auto;    
+        flex-direction: column-reverse;
       }
 
       .console tr:last-child td {
         border-bottom: none;
       }
 
+      .dispatched {
+        font-weight: bold;
+      }
+
+      .dispatched > .trigger {
+        border: 1px solid #000;
+        border-radius: 4px;
+        padding: 2px 10px 2px 10px;
+      }
+
       button {
         margin: 5px;
       }
+
+      .dropbtn {
+        border: none;
+        cursor: pointer;
+      }
+
+      .dropbtn:hover, .dropbtn:focus {
+        background-color: #f1f1f1;
+      }
+
+      .dropdown {
+        position: relative;
+        display: inline-block;
+        margin-left: auto;
+      }
+
+      .dropdown-content {
+        display: none;
+        position: absolute;
+        right: 0;
+        background-color: #f1f1f1;
+        min-width: 160px;
+        overflow: auto;
+        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+        z-index: 1;
+      }
+
+      .dropdown-content .dropdown-item {
+        padding: 12px 16px;
+        font-weight: normal;
+      }
+
+      .show {display: block;}
+
+      .transition.active {
+        stroke: #fff5ad !important;
+        stroke-width: 5px !important;
+        filter: drop-shadow( 3px 3px 2px rgba(0, 0, 0, .7));
+      }
+
+      .statediagram-state.active > * {
+        fill: #fff5ad !important;
+        stroke-width: 2px !important;
+      }
+
     </style>
   </head>
 
@@ -136,15 +231,24 @@ public class HtmlRenderer
 
     <div class=""pane sidebar"">
         <div id=""buttons"">
-            <div class=""titlebar"">Events</div>
+            <div class=""titlebar"">Events            
+              <div class='dropdown'>
+                <span id='dropbtn' class='titlebar-icon dropbtn'>settings</span>
+                <div id='myDropdown' class='dropdown-content'>
+                  <div class='dropdown-item'>
+                    <input type='checkbox' id='timestamps' name='timestamps' value='Timestamps'>
+                    <label for='timestamps'>Timestamps</label>
+                  </div>
+                </div>
+              </div>            
+          </div>
         </div>
 
         <div class=""history"">
-            <div class=""titlebar"">Log</div>
-            <table class=""console"">
+          <table class=""console"">
             <tbody>
             </tbody>
-            </table>
+          </table>
         </div>
 
         <div class=""gutter""></div>
@@ -167,6 +271,11 @@ public class HtmlRenderer
         document.querySelector('svg').setAttribute('height', '100%');
         document.querySelector('svg').style[""max-width""] = '';
 
+        // don't scale the arrow when we scale the transition edge
+        document.querySelectorAll('g defs marker[id$=barbEnd]').forEach(marker => {
+            marker.setAttribute('markerUnits', 'userSpaceOnUse');
+        });
+
         var panZoom = window.panZoom = svgPanZoom(document.querySelector('svg'), {
             zoomEnabled: true,
             controlIconsEnabled: true,
@@ -174,6 +283,7 @@ public class HtmlRenderer
             center: true
         });
 
+        const diagramEventNamesArray = {{diagramEventNamesArray}};
 
         const leftPane = document.querySelector("".main"");
         const rightPane = document.querySelector("".sidebar"");
@@ -202,6 +312,38 @@ public class HtmlRenderer
 
         gutter.addEventListener('mousedown', resizer);
 
+        document.getElementById('timestamps').checked = document.querySelector('table.console').classList.contains('timestamps');
+        document.getElementById('timestamps').addEventListener('change', function() {
+          if(this.checked) {
+            document.querySelector('table.console').classList.add('timestamps');
+          } else {
+            document.querySelector('table.console').classList.remove('timestamps');
+          }
+        });
+
+        document.getElementById('dropbtn').addEventListener('click', myFunction);
+
+        /* When the user clicks on the button, 
+        toggle between hiding and showing the dropdown content */
+        function myFunction() {
+          document.getElementById('myDropdown').classList.toggle('show');
+        }
+
+        // Close the dropdown if the user clicks outside of it
+        window.onclick = function(event) {
+          if (!event.target.matches('.dropbtn')) {
+            var dropdowns = document.getElementsByClassName('dropdown-content');
+            var i;
+            for (i = 0; i < dropdowns.length; i++) {
+              var openDropdown = dropdowns[i];
+              if (openDropdown.classList.contains('show')) {
+                openDropdown.classList.remove('show');
+              }
+            }
+          }
+        }
+
+
 {{mocksCode}}
 
         // Convert a date to a string in the format HH:MM:SS.sss
@@ -213,16 +355,19 @@ public class HtmlRenderer
         }
 
         // Add a row to the history table.
-        function addHistoryRow(time, event, emphasis = false) {
+        function addHistoryRow(time, event, html = false) {
             var row = document.createElement('tr');
             var timeCell = document.createElement('td');
             timeCell.innerText = formatTime(time);
             timeCell.classList.add('timestamp');
             var eventCell = document.createElement('td');
-            eventCell.innerText = event;
-            if(emphasis) {
-                eventCell.classList.add('emphasis');                
+
+            if(html) {
+              eventCell.innerHTML = event;
+            } else {
+              eventCell.innerText = event;
             }
+
             row.appendChild(timeCell);
             row.appendChild(eventCell);
             document.querySelector('tbody').appendChild(row);
@@ -239,20 +384,19 @@ public class HtmlRenderer
         function highlightEdge(edgeId) {
             var edge = document.getElementById(edgeId);
             if (edge) {
-                edge.style.stroke = 'red';
-                highlightedEdges.add(edge);
+              edge.classList.add('active');
+              highlightedEdges.add(edge);
             }
         }
 
         function clearHighlightedEdges() {
             for (const edge of highlightedEdges) {
-                const showOldTraversal = true;
-                if (showOldTraversal) {
-                    // shows that the edge was traversed. Optional, but kinda nice.
-                    edge.style.stroke = 'green';
-                } else {
-                    edge.style.stroke = '';
-                }
+              edge.classList.remove('active');
+              const showOldTraversal = false;
+              if (showOldTraversal) {
+                  // shows that the edge was traversed. Optional, but kinda nice.
+                  edge.style.stroke = 'green';
+              }
             }
             highlightedEdges.clear();
         }
@@ -262,37 +406,59 @@ public class HtmlRenderer
         // when using {{smName}}.js in your own applications, although you may
         // choose to implement a tracer for debugging purposes.
         sm.tracer = {
-            enterState: (stateId) => {
-                var name = {{smName}}.stateIdToString(stateId);
-                document.querySelector('g[data-id=' + name + ']')?.classList.add('active');
-                sm.tracer.log(""Entered "" + name);
+            enterState: (mermaidName) => {
+                var e = document.querySelector('g[data-id=' + mermaidName + ']');
+                if(e) {
+                  e.classList.add('active');
+                  panOnScreen(e);
+                }
+                sm.tracer.log('➡️ Entered ' + mermaidName);
             },
-            exitState: (stateId) => {
-                var name = {{smName}}.stateIdToString(stateId);
-                document.querySelector('g[data-id=' + name + ']')?.classList.remove('active');
+            exitState: (mermaidName) => {
+                document.querySelector('g[data-id=' + mermaidName + ']')?.classList.remove('active');
             },
             edgeTransition: (edgeId) => {
                 highlightEdge(edgeId);
             },
-            log: (message, emphasis=false) => {
-                addHistoryRow(new Date(), message, emphasis);
+            log: (message, html=false) => {
+                addHistoryRow(new Date(), message, html);
             }
         };
 
         // Wire up the buttons that dispatch events for the state machine.
-        for (const eventName in {{smName}}.EventId) {
+        diagramEventNamesArray.forEach(diagramEventName => {
             var button = document.createElement('button');
-            button.id = 'button_' + eventName;
-            button.innerText = eventName;
+            button.id = 'button_' + diagramEventName;
+            button.innerText = diagramEventName;
             button.addEventListener('click', () => {
                 clearHighlightedEdges();
-                sm.tracer.log(""Dispatched "" + eventName, true);
-                sm.dispatchEvent({{smName}}.EventId[eventName]); 
+                sm.tracer?.log('<span class=""dispatched""><span class=""trigger"">' + diagramEventName + '</span> DISPATCHED</span>', true);
+                const fsmEventName = diagramEventName.toUpperCase();
+                sm.dispatchEvent({{smName}}.EventId[fsmEventName]); 
             });
             document.getElementById('buttons').appendChild(button);
-        }
+        });
 
+        sm.tracer?.log('<span class=""dispatched"">START</span>', true);
         sm.start();
+
+
+        function panOnScreen(element) {
+          if(!element) return;
+
+          var bounds = element.getBoundingClientRect();
+          if(bounds.x<0 || bounds.y<0) {
+              var x = Math.max(0, -bounds.x + 20);
+              var y = Math.max(0, -bounds.y + 20);
+              window.panZoom.panBy({x: x, y: y});
+          }
+          var panebounds = document.querySelector('svg').getBoundingClientRect();
+          if(bounds.x>panebounds.width || bounds.y>panebounds.height) {
+              var x = Math.min(0, panebounds.width - bounds.x - bounds.width - 20);
+              var y = Math.min(0, panebounds.height - bounds.y - bounds.height - 20);
+              window.panZoom.panBy({x: x, y: y});
+          }
+        }
     </script>
 
 
@@ -303,6 +469,7 @@ public class HtmlRenderer
         htmlTemplate = htmlTemplate.Replace("{{jsCode}}", jsCode);
         htmlTemplate = htmlTemplate.Replace("{{mocksCode}}", mocksCode);
         htmlTemplate = htmlTemplate.Replace("{{smName}}", smName);
+        htmlTemplate = htmlTemplate.Replace("{{diagramEventNamesArray}}", diagramEventNamesArray);
         stringBuilder.AppendLine(htmlTemplate);
     }
 }
